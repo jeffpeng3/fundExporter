@@ -1,8 +1,6 @@
 import email
-import imaplib
 import os
 import re
-from datetime import datetime
 
 
 def load_env(path=".env"):
@@ -56,12 +54,12 @@ def get_text(msg):
                 return decoded
             elif ct == "text/html" and text_content is None:
                 text_content = strip_html(decoded)
-        return text_content or "(無內容)"
+        return text_content or ""
     else:
         ct = msg.get_content_type()
         payload = msg.get_payload(decode=True)
         if payload is None:
-            return "(無內容)"
+            return ""
         charset = msg.get_content_charset() or "utf-8"
         try:
             decoded = payload.decode(charset, errors="replace")
@@ -71,17 +69,7 @@ def get_text(msg):
             return decoded
         elif ct == "text/html":
             return strip_html(decoded)
-        return "(無內容)"
-
-
-def format_date(date_str):
-    if not date_str:
         return ""
-    try:
-        parsed = email.utils.parsedate_to_datetime(date_str)
-        return parsed.strftime("%Y-%m-%d %H:%M")
-    except Exception:
-        return date_str
 
 
 def quote_folder(name):

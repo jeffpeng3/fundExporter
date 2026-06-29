@@ -1,10 +1,8 @@
 import email
-import email.utils
 import imaplib
 import json
 import logging
 import os
-import re
 import threading
 from datetime import date, datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -16,6 +14,7 @@ from prometheus_client import Gauge, generate_latest, REGISTRY
 import fund_parser
 import gist_store
 import nav_fetcher
+from gmail_filter import load_env, decode_header, strip_html, get_text, quote_folder
 
 logger = logging.getLogger("fund_exporter")
 
@@ -40,18 +39,6 @@ NAV_CRON_MINUTE = int(os.environ.get("NAV_CRON_MINUTE", "0"))
 FETCH_INTERVAL_HOURS = int(os.environ.get("FETCH_INTERVAL_HOURS", "1"))
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8000"))
 INDEX_HTML = os.path.join(os.path.dirname(__file__), "index.html")
-
-
-def load_env(path=".env"):
-    if not os.path.exists(path):
-        return
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip())
 
 
 # ── 初始化從 Gist 載入 ──────────────────────────────────────────
@@ -109,67 +96,6 @@ def ensure_fund_code(fund_name: str) -> str | None:
 
 
 # ── 郵件處理 ────────────────────────────────────────────────────
-def decode_header(val):
-    if val is None:
-        return ""
-    parts = email.header.decode_header(val)
-    result = []
-    for part, charset in parts:
-        if isinstance(part, bytes):
-            try:
-                result.append(part.decode(charset or "utf-8", errors="replace"))
-            except LookupError:
-                result.append(part.decode("utf-8", errors="replace"))
-        else:
-            result.append(part)
-    return " ".join(result)
-
-
-def strip_html(html):
-    text = re.sub(r"<[^>]+>", " ", html)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
-def get_text(msg):
-    if msg.is_multipart():
-        text_content = None
-        for part in msg.walk():
-            ct = part.get_content_type()
-            payload = part.get_payload(decode=True)
-            if payload is None:
-                continue
-            charset = part.get_content_charset() or "utf-8"
-            try:
-                decoded = payload.decode(charset, errors="replace")
-            except LookupError:
-                decoded = payload.decode("utf-8", errors="replace")
-            if ct == "text/plain":
-                return decoded
-            elif ct == "text/html" and text_content is None:
-                text_content = strip_html(decoded)
-        return text_content or ""
-    else:
-        ct = msg.get_content_type()
-        payload = msg.get_payload(decode=True)
-        if payload is None:
-            return ""
-        charset = msg.get_content_charset() or "utf-8"
-        try:
-            decoded = payload.decode(charset, errors="replace")
-        except LookupError:
-            decoded = payload.decode("utf-8", errors="replace")
-        if ct == "text/plain":
-            return decoded
-        elif ct == "text/html":
-            return strip_html(decoded)
-        return ""
-
-
-def quote_folder(name):
-    return f'"{name}"'
-
-
 def fetch_new_emails():
     email_account = os.environ.get("GMAIL_ACCOUNT")
     email_password = os.environ.get("GMAIL_APP_PASSWORD")
@@ -298,7 +224,7 @@ def _holdings_list() -> list[dict]:
 
 
 # ── HTTP Handler ────────────────────────────────────────────────
-_INDEX_CACHE: str | None = None
+_INDEX_CACHE: bytes | None = None
 _INDEX_LOCK = threading.Lock()
 
 
