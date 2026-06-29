@@ -14,7 +14,7 @@ from prometheus_client import Gauge, generate_latest, REGISTRY
 import fund_parser
 import gist_store
 import nav_fetcher
-from gmail_filter import load_env, decode_header, strip_html, get_text, quote_folder
+from gmail_filter import load_env, get_text, quote_folder
 
 logger = logging.getLogger("fund_exporter")
 
