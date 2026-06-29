@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fund Exporter</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+h1 { font-size: 24px; font-weight: 600; }
+.badge { font-size: 12px; background: #1e293b; padding: 4px 10px; border-radius: 12px; color: #94a3b8; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+.btn-ghost:hover { background: #1e293b; }
+.card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 12px; border-bottom: 1px solid #334155; }
+td { padding: 12px; border-bottom: 1px solid #1e293b; font-size: 14px; }
+tr:hover td { background: #1a2332; }
+.text-right { text-align: right; }
+.text-green { color: #22c55e; }
+.text-red { color: #ef4444; }
+.text-muted { color: #64748b; }
+.summary-row { font-weight: 600; }
+.summary-row td { border-top: 2px solid #334155; padding-top: 16px; font-size: 15px; }
+.actions { display: flex; gap: 6px; }
+.empty { text-align: center; padding: 40px; color: #64748b; }
+.footer { text-align: center; font-size: 12px; color: #475569; margin-top: 24px; }
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.active { display: flex; }
+.modal { background: #1e293b; padding: 24px; border-radius: 12px; width: 400px; max-width: 90vw; }
+.modal h2 { margin-bottom: 16px; font-size: 18px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
+.form-group input { width: 100%; padding: 8px 12px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; font-size: 14px; }
+.form-group input:focus { outline: none; border-color: #3b82f6; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.suggest-wrap { position: relative; }
+.suggest-list { position: absolute; top: 100%; left: 0; right: 0; background: #1e293b; border: 1px solid #334155; border-top: none; border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto; z-index: 10; display: none; }
+.suggest-list div { padding: 8px 12px; cursor: pointer; font-size: 13px; }
+.suggest-list div:hover { background: #334155; }
+.suggest-list .code-tag { float: right; color: #64748b; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Fund Exporter</h1>
+  <div>
+    <span class="badge" id="statusBadge">初始化中…</span>
+    <button class="btn btn-primary" onclick="showAddModal()">+ 新增庫存</button>
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>基金名稱</th>
+        <th class="text-right">成本</th>
+        <th class="text-right">單位數</th>
+        <th class="text-right">淨值</th>
+        <th class="text-right">淨值日期</th>
+        <th class="text-right">市值</th>
+        <th class="text-right">損益</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="holdingsBody">
+    </tbody>
+    <tfoot id="holdingsFoot">
+    </tfoot>
+  </table>
+  <div class="empty" id="emptyState">尚無庫存資料，請點擊「新增庫存」或設定 Gist</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">新增庫存</h2>
+    <div class="form-group">
+      <label for="inputName">基金名稱</label>
+      <div class="suggest-wrap">
+        <input id="inputName" placeholder="輸入關鍵字搜尋…" autocomplete="off">
+        <div class="suggest-list" id="suggestList"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="inputCost">申購成本 (NTD)</label>
+      <input id="inputCost" type="number" placeholder="50000">
+    </div>
+    <div class="form-group">
+      <label for="inputUnits">單位數</label>
+      <input id="inputUnits" type="number" step="0.0001" placeholder="85.5">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveHolding()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let holdings = [];
+let editingName = null;
+
+async function fetchHoldings() {
+  try {
+    const resp = await fetch('/api/holdings');
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+    holdings = data.holdings || [];
+
+    document.getElementById('emptyState').style.display =
+      holdings.length === 0 ? 'block' : 'none';
+
+    const tbody = document.getElementById('holdingsBody');
+    tbody.innerHTML = '';
+    let totalCost = 0, totalValue = 0;
+
+    for (const h of holdings) {
+      const pnl = h.value - h.cost;
+      const pnlPct = h.cost > 0 ? ((pnl / h.cost) * 100) : 0;
+      totalCost += h.cost;
+      totalValue += h.value;
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${esc(h.name)}</td>
+        <td class="text-right">${fmt(h.cost)}</td>
+        <td class="text-right">${h.units.toFixed(4)}</td>
+        <td class="text-right">${h.nav > 0 ? h.nav.toFixed(4) : '<span class="text-muted">—</span>'}</td>
+        <td class="text-right">${h.nav_date || '<span class="text-muted">—</span>'}</td>
+        <td class="text-right">${fmt(h.value)}</td>
+        <td class="text-right ${pnl >= 0 ? 'text-green' : 'text-red'}">${pnl >= 0 ? '+' : ''}${fmt(pnl)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)</td>
+        <td class="actions">
+          <button class="btn btn-sm btn-ghost" onclick="showEditModal('${escAttr(h.name)}')">編輯</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteHolding('${escAttr(h.name)}')">刪除</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    }
+
+    const foot = document.getElementById('holdingsFoot');
+    if (holdings.length > 0) {
+      const totalPnl = totalValue - totalCost;
+      const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+      foot.innerHTML = `
+        <tr class="summary-row">
+          <td>合計</td>
+          <td class="text-right">${fmt(totalCost)}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="text-right">${fmt(totalValue)}</td>
+          <td class="text-right ${totalPnl >= 0 ? 'text-green' : 'text-red'}">${totalPnl >= 0 ? '+' : ''}${fmt(totalPnl)} (${totalPnlPct >= 0 ? '+' : ''}${totalPnlPct.toFixed(1)}%)</td>
+          <td></td>
+        </tr>
+      `;
+    } else {
+      foot.innerHTML = '';
+    }
+
+    document.getElementById('statusBadge').textContent =
+      `更新中 (${holdings.length} 筆)`;
+  } catch (err) {
+    document.getElementById('statusBadge').textContent = '連線錯誤';
+    console.error('fetchHoldings error:', err);
+  }
+}
+
+async function saveHolding() {
+  const name = document.getElementById('inputName').value.trim();
+  const cost = parseFloat(document.getElementById('inputCost').value);
+  const units = parseFloat(document.getElementById('inputUnits').value);
+  if (!name || isNaN(cost) || isNaN(units) || cost <= 0 || units <= 0) return;
+
+  const body = { fund_name: name, cost, units };
+  if (editingName) body.original_name = editingName;
+
+  try {
+    const resp = await fetch('/api/holdings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) throw new Error(resp.statusText);
+    closeModal();
+    await fetchHoldings();
+  } catch (err) {
+    alert('儲存失敗: ' + err.message);
+  }
+}
+
+async function deleteHolding(name) {
+  if (!confirm(`確定刪除「${name}」？`)) return;
+  try {
+    const resp = await fetch(`/api/holdings?fund_name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (!resp.ok) throw new Error(resp.statusText);
+    await fetchHoldings();
+  } catch (err) {
+    alert('刪除失敗: ' + err.message);
+  }
+}
+
+function showAddModal() {
+  editingName = null;
+  document.getElementById('modalTitle').textContent = '新增庫存';
+  document.getElementById('inputName').value = '';
+  document.getElementById('inputCost').value = '';
+  document.getElementById('inputUnits').value = '';
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function showEditModal(name) {
+  const h = holdings.find(x => x.name === name);
+  if (!h) return;
+  editingName = name;
+  document.getElementById('modalTitle').textContent = '編輯庫存';
+  document.getElementById('inputName').value = h.name;
+  document.getElementById('inputCost').value = h.cost;
+  document.getElementById('inputUnits').value = h.units;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+function fmt(n) { return Math.round(n).toLocaleString(); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return s.replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+// ── 基金名稱自動建議 ──────────────────────────────────────
+const nameInput = document.getElementById('inputName');
+const suggestList = document.getElementById('suggestList');
+let suggestTimer = null;
+
+nameInput.addEventListener('input', () => {
+  clearTimeout(suggestTimer);
+  const q = nameInput.value.trim();
+  if (q.length < 1) { suggestList.style.display = 'none'; return; }
+  suggestTimer = setTimeout(async () => {
+    try {
+      const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const data = await resp.json();
+      const items = data.results || [];
+      if (items.length === 0) { suggestList.style.display = 'none'; return; }
+      suggestList.innerHTML = items.map(r =>
+        `<div onclick="selectSuggestion('${escAttr(r.name)}')">
+          ${esc(r.name)} <span class="code-tag">${r.code}</span>
+        </div>`
+      ).join('');
+      suggestList.style.display = 'block';
+    } catch (_) { suggestList.style.display = 'none'; }
+  }, 200);
+});
+
+function selectSuggestion(name) {
+  nameInput.value = name;
+  suggestList.style.display = 'none';
+  document.getElementById('inputCost').focus();
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.suggest-wrap')) suggestList.style.display = 'none';
+});
+
+nameInput.addEventListener('keydown', (e) => {
+  const items = suggestList.querySelectorAll('div');
+  if (!items.length) return;
+  const idx = Array.from(items).indexOf(document.activeElement);
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    items[Math.min(idx + 1, items.length - 1)].focus();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    items[Math.max(idx - 1, 0)].focus();
+  } else if (e.key === 'Enter' && document.activeElement !== nameInput) {
+    e.preventDefault();
+    document.activeElement.click();
+  }
+});
+// ─────────────────────────────────────────────────────────
+
+fetchHoldings();
+setInterval(fetchHoldings, 30000);
+
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

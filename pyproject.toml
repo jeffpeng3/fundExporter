@@ -1,0 +1,11 @@
+[project]
+name = "fundexporter"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "apscheduler>=3.11.3",
+    "beautifulsoup4>=4.15.0",
+    "httpx>=0.28.1",
+    "lxml>=6.1.1",
+    "prometheus-client>=0.25.0",
+]
