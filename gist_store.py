@@ -64,19 +64,18 @@ def load() -> tuple[dict, dict]:
     return holdings, mapping
 
 
-def save_holdings(holdings: dict):
-    _patch({"holdings.json": {"content": json.dumps(holdings, ensure_ascii=False, indent=2)}})
-    logger.info("holdings.json 已寫回 Gist")
+def load_processed_uids() -> set[str]:
+    data = _get()
+    raw = _parse_file(data, "processed_uids.json")
+    uids = set(raw.get("uids", []))
+    logger.info("已從 Gist 載入 %d 筆已處理 UID", len(uids))
+    return uids
 
 
-def save_mapping(mapping: dict):
-    _patch({"fund_mapping.json": {"content": json.dumps(mapping, ensure_ascii=False, indent=2)}})
-    logger.info("fund_mapping.json 已寫回 Gist")
-
-
-def save_both(holdings: dict, mapping: dict):
+def save_all(holdings: dict, mapping: dict, processed_uids: set[str]):
     _patch({
         "holdings.json": {"content": json.dumps(holdings, ensure_ascii=False, indent=2)},
         "fund_mapping.json": {"content": json.dumps(mapping, ensure_ascii=False, indent=2)},
+        "processed_uids.json": {"content": json.dumps({"uids": sorted(processed_uids)}, ensure_ascii=False, indent=2)},
     })
-    logger.info("holdings.json + fund_mapping.json 已寫回 Gist")
+    logger.info("已同步 3 個檔案至 Gist")

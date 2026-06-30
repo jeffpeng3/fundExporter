@@ -32,6 +32,9 @@ records_lock = threading.Lock()
 mapping: dict[str, str] = {}
 mapping_lock = threading.Lock()
 
+processed_uids: set[str] = set()
+processed_uids_lock = threading.Lock()
+
 # ── 設定 ────────────────────────────────────────────────────────
 GMAIL_FOLDER = os.environ.get("GMAIL_FOLDER", "money/bank/line bank/fund")
 NAV_CRON_HOUR = int(os.environ.get("NAV_CRON_HOUR", "22"))
@@ -43,7 +46,7 @@ INDEX_HTML = os.path.join(os.path.dirname(__file__), "index.html")
 
 # ── 初始化從 Gist 載入 ──────────────────────────────────────────
 def init_from_gist():
-    global records, mapping
+    global records, mapping, processed_uids
     try:
         h, m = gist_store.load()
     except Exception as e:
@@ -61,7 +64,12 @@ def init_from_gist():
             }
     with mapping_lock:
         mapping = m
-    logger.info("初始化: %d 筆持倉, %d 筆對照", len(records), len(mapping))
+    try:
+        with processed_uids_lock:
+            processed_uids = gist_store.load_processed_uids()
+    except Exception as e:
+        logger.warning("讀取已處理 UID 失敗: %s", e)
+    logger.info("初始化: %d 筆持倉, %d 筆對照, %d 筆已處理 UID", len(records), len(mapping), len(processed_uids))
 
 
 def _sync_gist():
@@ -69,8 +77,10 @@ def _sync_gist():
         holdings = {name: {"cost": r["cost"], "units": r["units"]} for name, r in records.items()}
     with mapping_lock:
         mp = dict(mapping)
+    with processed_uids_lock:
+        uids = set(processed_uids)
     try:
-        gist_store.save_both(holdings, mp)
+        gist_store.save_all(holdings, mp, uids)
     except Exception as e:
         logger.error("同步至 Gist 失敗: %s", e)
 
@@ -126,8 +136,16 @@ def fetch_new_emails():
             conn.logout()
             return
 
-        selected_uids = all_uids[-5:]
+        with processed_uids_lock:
+            known = set(processed_uids)
+        selected_uids = [u for u in all_uids[-5:] if u not in known]
+        if not selected_uids:
+            conn.close()
+            conn.logout()
+            return
+
         new_records: list[dict] = []
+        newly_processed: list[bytes] = []
         for uid in reversed(selected_uids):
             r = conn.uid("FETCH", uid, "(BODY[])")
             if r[0] != "OK":
@@ -137,9 +155,14 @@ def fetch_new_emails():
             body = get_text(msg)
             parsed = fund_parser.parse_email_body(body)
             new_records.extend(parsed)
+            newly_processed.append(uid)
 
         conn.close()
         conn.logout()
+
+        if newly_processed:
+            with processed_uids_lock:
+                processed_uids.update(uid.decode() for uid in newly_processed)
 
         if not new_records:
             return
