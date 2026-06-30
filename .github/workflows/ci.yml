@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -18,8 +23,24 @@ jobs:
       - name: Sync dependencies
         run: uv sync --frozen
       - name: Check syntax
-        run: uv run python -c "
-import py_compile, pathlib;
-for f in pathlib.Path().glob('*.py'):
-    py_compile.compile(str(f), doraise=True)
-"
+        run: uv run python -m py_compile fund_parser.py gmail_filter.py gist_store.py nav_fetcher.py fund_exporter.py
+
+  docker:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }},ghcr.io/${{ github.repository }}:latest
