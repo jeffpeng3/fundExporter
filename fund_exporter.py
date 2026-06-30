@@ -138,31 +138,29 @@ def fetch_new_emails():
 
         with processed_uids_lock:
             known = set(processed_uids)
-        selected_uids = [u for u in all_uids[-5:] if u not in known]
-        if not selected_uids:
-            conn.close()
-            conn.logout()
-            return
 
         new_records: list[dict] = []
-        newly_processed: list[bytes] = []
-        for uid in reversed(selected_uids):
+        newly_processed: list[str] = []
+        for uid in reversed(all_uids[-5:]):
             r = conn.uid("FETCH", uid, "(BODY[])")
             if r[0] != "OK":
                 continue
             raw_email = r[1][0][1]
             msg = email.message_from_bytes(raw_email)
+            msg_id = msg.get("Message-ID", "").strip()
+            if not msg_id or msg_id in known:
+                continue
             body = get_text(msg)
             parsed = fund_parser.parse_email_body(body)
             new_records.extend(parsed)
-            newly_processed.append(uid)
+            newly_processed.append(msg_id)
 
         conn.close()
         conn.logout()
 
         if newly_processed:
             with processed_uids_lock:
-                processed_uids.update(uid.decode() for uid in newly_processed)
+                processed_uids.update(newly_processed)
 
         if not new_records:
             return
