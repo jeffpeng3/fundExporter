@@ -145,21 +145,26 @@ def fetch_new_emails():
             return
 
         changed = False
+        new_names = []
         with records_lock:
             for rec in new_records:
                 name = rec["fund_name"]
                 if name not in records:
                     records[name] = {"cost": 0.0, "units": 0.0, "nav": 0.0, "nav_date": ""}
+                    new_names.append(name)
                 records[name]["cost"] += rec["amount"]
                 records[name]["units"] += rec["units"]
                 changed = True
 
-                code = ensure_fund_code(name)
-                if code and records[name]["nav"] == 0.0:
-                    nav_data = nav_fetcher.fetch_nav(code)
-                    if nav_data:
-                        records[name]["nav"] = nav_data[1]
-                        records[name]["nav_date"] = nav_data[0]
+        for name in new_names:
+            code = ensure_fund_code(name)
+            if code:
+                nav_data = nav_fetcher.fetch_nav(code)
+                if nav_data:
+                    with records_lock:
+                        if name in records:
+                            records[name]["nav"] = nav_data[1]
+                            records[name]["nav_date"] = nav_data[0]
 
         if changed:
             _sync_gist()
