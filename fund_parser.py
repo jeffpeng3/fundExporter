@@ -10,10 +10,10 @@ def parse_email_body(text: str) -> list[dict]:
         if not block:
             continue
 
-        name_m = re.search(r"基金名稱[：:]\s*(.+?)(?:\n|$)", block)
-        amount_m = re.search(r"申購金額[：:]\s*NT?\$?([0-9,]+)", block)
+        name_m = re.search(r"基金名稱[：:]\s*(.+?)(?:\n|\s*[&]|\s*$)", block)
+        amount_m = re.search(r"申購金額[：:]\s*(?:NT?\$?\s*)?([0-9,]+)", block)
         units_m = re.search(r"單位數[：:]\s*([0-9.]+)", block)
-        date_m = re.search(r"交易日期[：:]\s*(\d{4}/\d{2}/\d{2})", block)
+        date_m = re.search(r"交易日期[：:]\s*(\d{4}/\d{2}/\d{2})", text)
 
         if name_m and amount_m:
             fund_name = name_m.group(1).strip()
