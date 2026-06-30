@@ -40,7 +40,8 @@ processed_uids_lock = threading.Lock()
 GMAIL_FOLDER = os.environ.get("GMAIL_FOLDER", "money/bank/line bank/fund")
 NAV_CRON_HOUR = int(os.environ.get("NAV_CRON_HOUR", "22"))
 NAV_CRON_MINUTE = int(os.environ.get("NAV_CRON_MINUTE", "0"))
-FETCH_INTERVAL_HOURS = int(os.environ.get("FETCH_INTERVAL_HOURS", "1"))
+FETCH_CRON_HOUR = int(os.environ.get("FETCH_CRON_HOUR", "20"))
+FETCH_CRON_MINUTE = int(os.environ.get("FETCH_CRON_MINUTE", "0"))
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8000"))
 INDEX_HTML = os.path.join(os.path.dirname(__file__), "index.html")
 
@@ -377,8 +378,9 @@ def main():
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         fetch_new_emails,
-        "interval",
-        hours=FETCH_INTERVAL_HOURS,
+        "cron",
+        hour=FETCH_CRON_HOUR,
+        minute=FETCH_CRON_MINUTE,
         id="fetch_emails",
         next_run_time=datetime.now() + timedelta(seconds=10),
     )
@@ -390,7 +392,7 @@ def main():
         id="update_navs",
     )
     scheduler.start()
-    logger.info("排程已啟動（郵件每 %d 小時 → 淨值每天 %02d:%02d）", FETCH_INTERVAL_HOURS, NAV_CRON_HOUR, NAV_CRON_MINUTE)
+    logger.info("排程已啟動（郵件每天 %02d:%02d → 淨值每天 %02d:%02d）", FETCH_CRON_HOUR, FETCH_CRON_MINUTE, NAV_CRON_HOUR, NAV_CRON_MINUTE)
 
     server = HTTPServer(("0.0.0.0", EXPORTER_PORT), Handler)
     logger.info("HTTP server listening on port %d", EXPORTER_PORT)
