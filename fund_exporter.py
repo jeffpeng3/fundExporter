@@ -5,6 +5,7 @@ import logging
 import os
 import threading
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -57,9 +58,9 @@ def init_from_gist():
         records = {}
         for name, data in h.items():
             records[name] = {
-                "cost": float(data.get("cost", 0)),
-                "units": float(data.get("units", 0)),
-                "nav": 0.0,
+                "cost": int(data.get("cost", 0)),
+                "units": Decimal(str(data.get("units", 0))),
+                "nav": Decimal("0"),
                 "nav_date": "",
             }
     with mapping_lock:
@@ -74,7 +75,7 @@ def init_from_gist():
 
 def _sync_gist():
     with records_lock:
-        holdings = {name: {"cost": r["cost"], "units": r["units"]} for name, r in records.items()}
+        holdings = {name: {"cost": r["cost"], "units": float(r["units"])} for name, r in records.items()}
     with mapping_lock:
         mp = dict(mapping)
     with processed_uids_lock:
@@ -171,10 +172,10 @@ def fetch_new_emails():
             for rec in new_records:
                 name = rec["fund_name"]
                 if name not in records:
-                    records[name] = {"cost": 0.0, "units": 0.0, "nav": 0.0, "nav_date": ""}
+                    records[name] = {"cost": 0, "units": Decimal("0"), "nav": Decimal("0"), "nav_date": ""}
                     new_names.append(name)
                 records[name]["cost"] += rec["amount"]
-                records[name]["units"] += rec["units"]
+                records[name]["units"] += Decimal(str(rec["units"]))
                 changed = True
 
         for name in new_names:
@@ -184,7 +185,7 @@ def fetch_new_emails():
                 if nav_data:
                     with records_lock:
                         if name in records:
-                            records[name]["nav"] = nav_data[1]
+                            records[name]["nav"] = Decimal(str(nav_data[1]))
                             records[name]["nav_date"] = nav_data[0]
 
         if changed:
@@ -193,6 +194,7 @@ def fetch_new_emails():
 
     except Exception as e:
         logger.error("郵件擷取失敗: %s", e)
+
 
 
 # ── 淨值更新 ────────────────────────────────────────────────────
@@ -212,7 +214,7 @@ def update_navs():
         if nav_data:
             with records_lock:
                 if name in records:
-                    records[name]["nav"] = nav_data[1]
+                    records[name]["nav"] = Decimal(str(nav_data[1]))
                     records[name]["nav_date"] = nav_data[0]
             logger.info("淨值更新 %s → %.4f (%s)", name, nav_data[1], nav_data[0])
 
@@ -223,10 +225,10 @@ def refresh_metrics():
         snapshot = {k: dict(v) for k, v in records.items()}
     for name, data in snapshot.items():
         fund_cost.labels(fund_name=name).set(data["cost"])
-        fund_units.labels(fund_name=name).set(data["units"])
+        fund_units.labels(fund_name=name).set(float(data["units"]))
         nav_val = data["nav"]
-        fund_nav.labels(fund_name=name).set(nav_val)
-        market_value = data["units"] * nav_val
+        fund_nav.labels(fund_name=name).set(float(nav_val))
+        market_value = float(data["units"] * nav_val)
         fund_value.labels(fund_name=name).set(market_value)
         ratio = market_value / data["cost"] if data["cost"] > 0 else 0.0
         fund_cost_value_ratio.labels(fund_name=name).set(ratio)
@@ -239,11 +241,11 @@ def _holdings_list() -> list[dict]:
         return [
             {
                 "name": name,
-                "cost": round(records[name]["cost"], 2),
-                "units": records[name]["units"],
-                "nav": records[name]["nav"],
+                "cost": records[name]["cost"],
+                "units": float(records[name]["units"]),
+                "nav": float(records[name]["nav"]),
                 "nav_date": records[name]["nav_date"],
-                "value": round(records[name]["units"] * records[name]["nav"], 2),
+                "value": float(records[name]["units"] * records[name]["nav"]),
             }
             for name in names
         ]
@@ -300,8 +302,8 @@ class Handler(BaseHTTPRequestHandler):
             body = self.rfile.read(length) if length else b"{}"
             data = json.loads(body)
             fund_name = data.get("fund_name", "").strip()
-            cost = float(data.get("cost", 0))
-            units = float(data.get("units", 0))
+            cost = int(data.get("cost", 0))
+            units = Decimal(str(data.get("units", 0)))
             original_name = data.get("original_name", "").strip()
 
             if not fund_name or cost <= 0 or units <= 0:
@@ -311,11 +313,11 @@ class Handler(BaseHTTPRequestHandler):
             with records_lock:
                 if original_name and original_name != fund_name:
                     old_data = records.pop(original_name, None)
-                    old_cost = old_data["cost"] if old_data else 0.0
-                    old_units = old_data["units"] if old_data else 0.0
-                    records[fund_name] = {"cost": old_cost, "units": old_units, "nav": 0.0, "nav_date": ""}
+                    old_cost = old_data["cost"] if old_data else 0
+                    old_units = old_data["units"] if old_data else Decimal("0")
+                    records[fund_name] = {"cost": old_cost, "units": old_units, "nav": Decimal("0"), "nav_date": ""}
                 if fund_name not in records:
-                    records[fund_name] = {"cost": 0.0, "units": 0.0, "nav": 0.0, "nav_date": ""}
+                    records[fund_name] = {"cost": 0, "units": Decimal("0"), "nav": Decimal("0"), "nav_date": ""}
                 records[fund_name]["cost"] = cost
                 records[fund_name]["units"] = units
 
@@ -325,7 +327,7 @@ class Handler(BaseHTTPRequestHandler):
                 if nav_data:
                     with records_lock:
                         if fund_name in records:
-                            records[fund_name]["nav"] = nav_data[1]
+                            records[fund_name]["nav"] = Decimal(str(nav_data[1]))
                             records[fund_name]["nav_date"] = nav_data[0]
 
             _sync_gist()
