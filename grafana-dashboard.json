@@ -9,137 +9,78 @@
   "panels": [
     {
       "id": 1,
-      "title": "總成本",
-      "type": "stat",
-      "gridPos": {"x": 0, "y": 0, "w": 3, "h": 3},
-      "targets": [{"expr": "sum(fund_cost)", "legendFormat": ""}],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyTWD",
-          "color": {"mode": "none"},
-          "thresholds": {"mode": "absolute", "steps": [{"value": null, "color": "blue"}]}
-        }
-      }
+      "title": "總市值 vs 總成本",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "sum(fund_value)", "legendFormat": "總市值"},
+        {"expr": "sum(fund_cost)", "legendFormat": "總成本"}
+      ]
     },
     {
       "id": 2,
-      "title": "總市值",
-      "type": "stat",
-      "gridPos": {"x": 3, "y": 0, "w": 3, "h": 3},
-      "targets": [{"expr": "sum(fund_value)", "legendFormat": ""}],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyTWD",
-          "color": {"mode": "none"},
-          "thresholds": {"mode": "absolute", "steps": [{"value": null, "color": "green"}]}
-        }
-      }
+      "title": "各基金市值走勢",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 6, "w": 12, "h": 6},
+      "targets": [
+        {"expr": "fund_value", "legendFormat": "{{fund_name}}"}
+      ]
     },
     {
       "id": 3,
-      "title": "總損益",
-      "type": "stat",
-      "gridPos": {"x": 6, "y": 0, "w": 3, "h": 3},
-      "targets": [{"expr": "sum(fund_value) - sum(fund_cost)", "legendFormat": ""}],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyTWD",
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"value": null, "color": "green"},
-              {"value": 0, "color": "yellow"},
-              {"value": 0.01, "color": "red"}
-            ]
-          }
-        }
-      }
-    },
-    {
-      "id": 4,
-      "title": "整體比例",
-      "type": "stat",
-      "gridPos": {"x": 9, "y": 0, "w": 3, "h": 3},
-      "targets": [{"expr": "sum(fund_value) / sum(fund_cost)", "legendFormat": ""}],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"value": null, "color": "red"},
-              {"value": 1.0, "color": "yellow"},
-              {"value": 1.01, "color": "green"}
-            ]
-          }
-        }
-      }
-    },
-    {
-      "id": 5,
-      "title": "基金持倉明細",
+      "title": "持倉明細與漲跌幅",
       "type": "table",
-      "gridPos": {"x": 0, "y": 3, "w": 12, "h": 8},
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
       "targets": [
-        {"expr": "fund_cost", "legendFormat": "__auto", "format": "table"},
-        {"expr": "fund_units", "legendFormat": "__auto", "format": "table"},
-        {"expr": "fund_nav", "legendFormat": "__auto", "format": "table"},
-        {"expr": "fund_value", "legendFormat": "__auto", "format": "table"},
-        {"expr": "fund_cost_value_ratio", "legendFormat": "__auto", "format": "table"}
+        {"expr": "fund_cost", "legendFormat": "成本", "format": "table"},
+        {"expr": "fund_units", "legendFormat": "單位數", "format": "table"},
+        {"expr": "fund_nav", "legendFormat": "淨值", "format": "table"},
+        {"expr": "fund_value", "legendFormat": "市值", "format": "table"},
+        {"expr": "fund_cost_value_ratio", "legendFormat": "比例", "format": "table"},
+        {"expr": "(fund_value - fund_value offset 1d) / fund_value offset 1d * 100", "legendFormat": "日漲跌%", "format": "table"},
+        {"expr": "(fund_value - fund_value offset 7d) / fund_value offset 7d * 100", "legendFormat": "週漲跌%", "format": "table"},
+        {"expr": "(fund_value - fund_value offset 30d) / fund_value offset 30d * 100", "legendFormat": "月漲跌%", "format": "table"}
       ],
       "transformations": [
         {"id": "merge", "options": {}},
         {"id": "groupBy", "options": {
           "fields": {
             "fund_name": {"aggregations": [], "operation": "groupby"},
-            "Value #fund_cost": {"aggregations": ["last"], "operation": "aggregate"},
-            "Value #fund_units": {"aggregations": ["last"], "operation": "aggregate"},
-            "Value #fund_nav": {"aggregations": ["last"], "operation": "aggregate"},
-            "Value #fund_value": {"aggregations": ["last"], "operation": "aggregate"},
-            "Value #fund_cost_value_ratio": {"aggregations": ["last"], "operation": "aggregate"}
+            "成本": {"aggregations": ["last"], "operation": "aggregate"},
+            "單位數": {"aggregations": ["last"], "operation": "aggregate"},
+            "淨值": {"aggregations": ["last"], "operation": "aggregate"},
+            "市值": {"aggregations": ["last"], "operation": "aggregate"},
+            "比例": {"aggregations": ["last"], "operation": "aggregate"},
+            "日漲跌%": {"aggregations": ["last"], "operation": "aggregate"},
+            "週漲跌%": {"aggregations": ["last"], "operation": "aggregate"},
+            "月漲跌%": {"aggregations": ["last"], "operation": "aggregate"}
           }
-        }},
-        {"id": "renameByRegex", "options": {
-          "regex": "Value #fund_",
-          "rename": ""
         }}
       ],
       "fieldConfig": {
         "defaults": {
-          "custom": {"align": "auto"},
-          "displayName": ""
+          "custom": {"align": "center"}
         },
         "overrides": [
-          {"matcher": {"id": "byName", "options": "cost"}, "properties": [{"id": "unit", "value": "currencyTWD"}]},
-          {"matcher": {"id": "byName", "options": "value"}, "properties": [{"id": "unit", "value": "currencyTWD"}]},
-          {"matcher": {"id": "byName", "options": "nav"}, "properties": [{"id": "unit", "value": "currencyTWD"}]},
-          {"matcher": {"id": "byName", "options": "cost_value_ratio"}, "properties": [{"id": "unit", "value": "percentunit"}]},
-          {"matcher": {"id": "byName", "options": "units"}, "properties": [{"id": "unit", "value": "none"}]}
+          {"matcher": {"id": "byName", "options": "日漲跌%"}, "properties": [
+            {"id": "custom.cellOptions", "value": {"type": "color-text", "mode": "basic"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"value": null, "color": "green"}, {"value": 0, "color": "red"}]}},
+            {"id": "unit", "value": "percent"}
+          ]},
+          {"matcher": {"id": "byName", "options": "週漲跌%"}, "properties": [
+            {"id": "custom.cellOptions", "value": {"type": "color-text", "mode": "basic"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"value": null, "color": "green"}, {"value": 0, "color": "red"}]}},
+            {"id": "unit", "value": "percent"}
+          ]},
+          {"matcher": {"id": "byName", "options": "月漲跌%"}, "properties": [
+            {"id": "custom.cellOptions", "value": {"type": "color-text", "mode": "basic"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"value": null, "color": "green"}, {"value": 0, "color": "red"}]}},
+            {"id": "unit", "value": "percent"}
+          ]},
+          {"matcher": {"id": "byName", "options": "比例"}, "properties": [
+            {"id": "unit", "value": "percent"}
+          ]}
         ]
-      }
-    },
-    {
-      "id": 6,
-      "title": "成本 vs 市值",
-      "type": "barchart",
-      "gridPos": {"x": 0, "y": 11, "w": 12, "h": 8},
-      "targets": [
-        {"expr": "fund_cost", "legendFormat": "成本"},
-        {"expr": "fund_value", "legendFormat": "市值"}
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyTWD",
-          "custom": {"stacking": {"mode": "none"}, "axisCenteredZero": false}
-        }
-      },
-      "options": {
-        "orientation": "horizontal",
-        "groupWidth": 0.7,
-        "barRadius": 3,
-        "showValue": "always"
       }
     }
   ]
