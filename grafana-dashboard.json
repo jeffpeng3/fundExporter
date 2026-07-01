@@ -38,7 +38,7 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "sum(fund_value)",
+                      "expr": "last_over_time(sum(fund_value)[30m:])",
                       "legendFormat": "總市值"
                     },
                     "version": "v0"
@@ -54,7 +54,7 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "sum(fund_cost)",
+                      "expr": "last_over_time(sum(fund_cost)[30m:])",
                       "legendFormat": "總成本"
                     },
                     "version": "v0"
@@ -77,6 +77,9 @@
           "spec": {
             "fieldConfig": {
               "defaults": {
+                "custom": {
+                  "spanNulls": -1
+                },
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -121,7 +124,7 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "fund_value",
+                      "expr": "last_over_time(fund_value[30m:])",
                       "legendFormat": "{{fund_name}}"
                     },
                     "version": "v0"
@@ -144,6 +147,9 @@
           "spec": {
             "fieldConfig": {
               "defaults": {
+                "custom": {
+                  "spanNulls": -1
+                },
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -188,8 +194,9 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "fund_cost",
+                      "expr": "sum by (fund_name) (fund_cost)",
                       "format": "table",
+                      "instant": true,
                       "legendFormat": "__auto"
                     },
                     "version": "v0"
@@ -205,8 +212,9 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "fund_units",
+                      "expr": "sum by (fund_name) (fund_units)",
                       "format": "table",
+                      "instant": true,
                       "legendFormat": "__auto"
                     },
                     "version": "v0"
@@ -222,8 +230,9 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "fund_nav",
+                      "expr": "sum by (fund_name) (fund_nav)",
                       "format": "table",
+                      "instant": true,
                       "legendFormat": "__auto"
                     },
                     "version": "v0"
@@ -239,8 +248,9 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "fund_value",
+                      "expr": "sum by (fund_name) (fund_value)",
                       "format": "table",
+                      "instant": true,
                       "legendFormat": "__auto"
                     },
                     "version": "v0"
@@ -256,64 +266,14 @@
                     "group": "",
                     "kind": "DataQuery",
                     "spec": {
-                      "expr": "fund_cost_value_ratio",
+                      "expr": "sum by (fund_name) (fund_cost_value_ratio)",
                       "format": "table",
+                      "instant": true,
                       "legendFormat": "__auto"
                     },
                     "version": "v0"
                   },
                   "refId": "E"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "group": "",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "expr": "(fund_value - fund_value offset 1d) / fund_value offset 1d * 100",
-                      "format": "table",
-                      "legendFormat": "__auto"
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "F"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "group": "",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "expr": "(fund_value - fund_value offset 7d) / fund_value offset 7d * 100",
-                      "format": "table",
-                      "legendFormat": "__auto"
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "G"
-                }
-              },
-              {
-                "kind": "PanelQuery",
-                "spec": {
-                  "hidden": false,
-                  "query": {
-                    "group": "",
-                    "kind": "DataQuery",
-                    "spec": {
-                      "expr": "(fund_value - fund_value offset 30d) / fund_value offset 30d * 100",
-                      "format": "table",
-                      "legendFormat": "__auto"
-                    },
-                    "version": "v0"
-                  },
-                  "refId": "H"
                 }
               }
             ],
@@ -336,26 +296,6 @@
                         "aggregations": [],
                         "operation": "groupby"
                       },
-                      "Value #fund_cost": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
-                      },
-                      "Value #fund_units": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
-                      },
-                      "Value #fund_nav": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
-                      },
-                      "Value #fund_value": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
-                      },
-                      "Value #fund_cost_value_ratio": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
-                      },
                       "Value #A": {
                         "aggregations": ["last"],
                         "operation": "aggregate"
@@ -375,40 +315,8 @@
                       "Value #E": {
                         "aggregations": ["last"],
                         "operation": "aggregate"
-                      },
-                      "Value #F": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
-                      },
-                      "Value #G": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
-                      },
-                      "Value #H": {
-                        "aggregations": ["last"],
-                        "operation": "aggregate"
                       }
                     }
-                  }
-                }
-              },
-              {
-                "group": "renameByRegex",
-                "kind": "Transformation",
-                "spec": {
-                  "options": {
-                    "regex": "Value #fund_",
-                    "rename": ""
-                  }
-                }
-              },
-              {
-                "group": "renameByRegex",
-                "kind": "Transformation",
-                "spec": {
-                  "options": {
-                    "regex": "Value #[A-H]$",
-                    "rename": ""
                   }
                 }
               }
@@ -418,7 +326,7 @@
         "description": "",
         "id": 3,
         "links": [],
-        "title": "持倉明細與漲跌幅",
+        "title": "基金持倉明細",
         "vizConfig": {
           "group": "table",
           "kind": "VizConfig",
@@ -447,65 +355,24 @@
               },
               "overrides": [
                 {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "成本"
-                  },
-                  "properties": [
-                    {
-                      "id": "custom.cellOptions",
-                      "value": {
-                        "type": "auto"
-                      }
-                    }
-                  ]
+                  "matcher": {"id": "byName", "options": "Value #A (last)", "scope": "series"},
+                  "properties": [{"id": "displayName", "value": "成本"}]
                 },
                 {
-                  "matcher": {
-                    "id": "byName",
-                    "options": "ratio"
-                  },
-                  "properties": [
-                    {
-                      "id": "unit",
-                      "value": "percent"
-                    }
-                  ]
+                  "matcher": {"id": "byName", "options": "Value #B (last)", "scope": "series"},
+                  "properties": [{"id": "displayName", "value": "持有單位數"}]
                 },
                 {
-                  "matcher": {
-                    "id": "byRegexp",
-                    "options": "日漲跌|週漲跌|月漲跌"
-                  },
-                  "properties": [
-                    {
-                      "id": "unit",
-                      "value": "percent"
-                    },
-                    {
-                      "id": "custom.cellOptions",
-                      "value": {
-                        "mode": "basic",
-                        "type": "color-text"
-                      }
-                    },
-                    {
-                      "id": "thresholds",
-                      "value": {
-                        "mode": "absolute",
-                        "steps": [
-                          {
-                            "color": "green",
-                            "value": null
-                          },
-                          {
-                            "color": "red",
-                            "value": 0
-                          }
-                        ]
-                      }
-                    }
-                  ]
+                  "matcher": {"id": "byName", "options": "Value #C (last)", "scope": "series"},
+                  "properties": [{"id": "displayName", "value": "單位淨值"}]
+                },
+                {
+                  "matcher": {"id": "byName", "options": "Value #D (last)", "scope": "series"},
+                  "properties": [{"id": "displayName", "value": "市值"}]
+                },
+                {
+                  "matcher": {"id": "byName", "options": "Value #E (last)", "scope": "series"},
+                  "properties": [{"id": "displayName", "value": "報酬率比例"}, {"id": "unit", "value": "percent"}]
                 }
               ]
             },
@@ -531,7 +398,7 @@
               "name": "panel-1"
             },
             "height": 6,
-            "width": 12,
+            "width": 24,
             "x": 0,
             "y": 0
           }
@@ -544,7 +411,7 @@
               "name": "panel-2"
             },
             "height": 6,
-            "width": 12,
+            "width": 24,
             "x": 0,
             "y": 6
           }
@@ -557,7 +424,7 @@
               "name": "panel-3"
             },
             "height": 8,
-            "width": 12,
+            "width": 24,
             "x": 0,
             "y": 12
           }
@@ -579,15 +446,15 @@
       "10s",
       "30s",
       "1m",
-      "5m",
+      "5m", 
       "15m",
       "30m",
-      "1h",
+      "1h", 
       "2h",
       "1d"
     ],
     "fiscalYearStartMonth": 0,
-    "from": "now-6h",
+    "from": "now-7d",
     "hideTimepicker": false,
     "timezone": "browser",
     "to": "now"

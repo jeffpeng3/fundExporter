@@ -25,6 +25,7 @@ fund_units = Gauge("fund_units", "累計單位數", ["fund_name"])
 fund_nav = Gauge("fund_nav", "最新淨值", ["fund_name"])
 fund_value = Gauge("fund_value", "市值 (units * nav)", ["fund_name"])
 fund_cost_value_ratio = Gauge("fund_cost_value_ratio", "市值/成本比", ["fund_name"])
+fund_detail = Gauge("fund_detail", "基金持倉明細", ["fund_name", "field"])
 
 # ── 狀態 ────────────────────────────────────────────────────────
 records: dict[str, dict] = {}
@@ -233,6 +234,11 @@ def refresh_metrics():
         fund_value.labels(fund_name=name).set(market_value)
         ratio = market_value / data["cost"] if data["cost"] > 0 else 0.0
         fund_cost_value_ratio.labels(fund_name=name).set(ratio)
+        fund_detail.labels(fund_name=name, field="cost").set(data["cost"])
+        fund_detail.labels(fund_name=name, field="units").set(float(data["units"]))
+        fund_detail.labels(fund_name=name, field="nav").set(float(nav_val))
+        fund_detail.labels(fund_name=name, field="value").set(market_value)
+        fund_detail.labels(fund_name=name, field="ratio").set(ratio)
 
 
 # ── API 回傳資料組裝 ────────────────────────────────────────────
