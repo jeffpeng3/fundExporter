@@ -1,87 +1,597 @@
 {
-  "title": "FundExporter",
-  "tags": ["fund", "finance"],
-  "schemaVersion": 39,
-  "version": 1,
-  "timezone": "browser",
-  "editable": true,
-  "refresh": "5m",
-  "panels": [
+  "annotations": [
     {
-      "id": 1,
-      "title": "總市值 vs 總成本",
-      "type": "timeseries",
-      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6},
-      "targets": [
-        {"expr": "sum(fund_value)", "legendFormat": "總市值"},
-        {"expr": "sum(fund_cost)", "legendFormat": "總成本"}
-      ]
-    },
-    {
-      "id": 2,
-      "title": "各基金市值走勢",
-      "type": "timeseries",
-      "gridPos": {"x": 0, "y": 6, "w": 12, "h": 6},
-      "targets": [
-        {"expr": "fund_value", "legendFormat": "{{fund_name}}"}
-      ]
-    },
-    {
-      "id": 3,
-      "title": "持倉明細與漲跌幅",
-      "type": "table",
-      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
-      "targets": [
-        {"expr": "fund_cost", "legendFormat": "成本", "format": "table"},
-        {"expr": "fund_units", "legendFormat": "單位數", "format": "table"},
-        {"expr": "fund_nav", "legendFormat": "淨值", "format": "table"},
-        {"expr": "fund_value", "legendFormat": "市值", "format": "table"},
-        {"expr": "fund_cost_value_ratio", "legendFormat": "比例", "format": "table"},
-        {"expr": "(fund_value - fund_value offset 1d) / fund_value offset 1d * 100", "legendFormat": "日漲跌%", "format": "table"},
-        {"expr": "(fund_value - fund_value offset 7d) / fund_value offset 7d * 100", "legendFormat": "週漲跌%", "format": "table"},
-        {"expr": "(fund_value - fund_value offset 30d) / fund_value offset 30d * 100", "legendFormat": "月漲跌%", "format": "table"}
-      ],
-      "transformations": [
-        {"id": "merge", "options": {}},
-        {"id": "groupBy", "options": {
-          "fields": {
-            "fund_name": {"aggregations": [], "operation": "groupby"},
-            "成本": {"aggregations": ["last"], "operation": "aggregate"},
-            "單位數": {"aggregations": ["last"], "operation": "aggregate"},
-            "淨值": {"aggregations": ["last"], "operation": "aggregate"},
-            "市值": {"aggregations": ["last"], "operation": "aggregate"},
-            "比例": {"aggregations": ["last"], "operation": "aggregate"},
-            "日漲跌%": {"aggregations": ["last"], "operation": "aggregate"},
-            "週漲跌%": {"aggregations": ["last"], "operation": "aggregate"},
-            "月漲跌%": {"aggregations": ["last"], "operation": "aggregate"}
-          }
-        }}
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {"align": "center"}
-        },
-        "overrides": [
-          {"matcher": {"id": "byName", "options": "日漲跌%"}, "properties": [
-            {"id": "custom.cellOptions", "value": {"type": "color-text", "mode": "basic"}},
-            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"value": null, "color": "green"}, {"value": 0, "color": "red"}]}},
-            {"id": "unit", "value": "percent"}
-          ]},
-          {"matcher": {"id": "byName", "options": "週漲跌%"}, "properties": [
-            {"id": "custom.cellOptions", "value": {"type": "color-text", "mode": "basic"}},
-            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"value": null, "color": "green"}, {"value": 0, "color": "red"}]}},
-            {"id": "unit", "value": "percent"}
-          ]},
-          {"matcher": {"id": "byName", "options": "月漲跌%"}, "properties": [
-            {"id": "custom.cellOptions", "value": {"type": "color-text", "mode": "basic"}},
-            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"value": null, "color": "green"}, {"value": 0, "color": "red"}]}},
-            {"id": "unit", "value": "percent"}
-          ]},
-          {"matcher": {"id": "byName", "options": "比例"}, "properties": [
-            {"id": "unit", "value": "percent"}
-          ]}
-        ]
+      "kind": "AnnotationQuery",
+      "spec": {
+        "builtIn": true,
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "query": {
+          "datasource": {
+            "name": "-- Grafana --"
+          },
+          "group": "grafana",
+          "kind": "DataQuery",
+          "spec": {},
+          "version": "v0"
+        }
       }
     }
-  ]
+  ],
+  "cursorSync": "Off",
+  "editable": true,
+  "elements": {
+    "panel-1": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "sum(fund_value)",
+                      "legendFormat": "總市值"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "sum(fund_cost)",
+                      "legendFormat": "總成本"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "B"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "",
+        "id": 1,
+        "links": [],
+        "title": "總市值 vs 總成本",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "none"
+              }
+            }
+          },
+          "version": "13.1.0"
+        }
+      }
+    },
+    "panel-2": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "fund_value",
+                      "legendFormat": "{{fund_name}}"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "",
+        "id": 2,
+        "links": [],
+        "title": "各基金市值走勢",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "none"
+              }
+            }
+          },
+          "version": "13.1.0"
+        }
+      }
+    },
+    "panel-3": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "fund_cost",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "fund_units",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "B"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "fund_nav",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "C"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "fund_value",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "D"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "fund_cost_value_ratio",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "E"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "(fund_value - fund_value offset 1d) / fund_value offset 1d * 100",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "F"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "(fund_value - fund_value offset 7d) / fund_value offset 7d * 100",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "G"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "group": "",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "expr": "(fund_value - fund_value offset 30d) / fund_value offset 30d * 100",
+                      "format": "table",
+                      "legendFormat": "__auto"
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "H"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": [
+              {
+                "group": "merge",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {}
+                }
+              },
+              {
+                "group": "groupBy",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "fields": {
+                      "fund_name": {
+                        "aggregations": [],
+                        "operation": "groupby"
+                      },
+                      "Value #fund_cost": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #fund_units": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #fund_nav": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #fund_value": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #fund_cost_value_ratio": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #A": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #B": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #C": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #D": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #E": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #F": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #G": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      },
+                      "Value #H": {
+                        "aggregations": ["last"],
+                        "operation": "aggregate"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "group": "renameByRegex",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "regex": "Value #fund_",
+                    "rename": ""
+                  }
+                }
+              },
+              {
+                "group": "renameByRegex",
+                "kind": "Transformation",
+                "spec": {
+                  "options": {
+                    "regex": "Value #[A-H]$",
+                    "rename": ""
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "description": "",
+        "id": 3,
+        "links": [],
+        "title": "持倉明細與漲跌幅",
+        "vizConfig": {
+          "group": "table",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "center",
+                  "cellOptions": {
+                    "type": "auto"
+                  },
+                  "footer": {
+                    "reducers": []
+                  },
+                  "inspect": false
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "成本"
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.cellOptions",
+                      "value": {
+                        "type": "auto"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "ratio"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "percent"
+                    }
+                  ]
+                },
+                {
+                  "matcher": {
+                    "id": "byRegexp",
+                    "options": "日漲跌|週漲跌|月漲跌"
+                  },
+                  "properties": [
+                    {
+                      "id": "unit",
+                      "value": "percent"
+                    },
+                    {
+                      "id": "custom.cellOptions",
+                      "value": {
+                        "mode": "basic",
+                        "type": "color-text"
+                      }
+                    },
+                    {
+                      "id": "thresholds",
+                      "value": {
+                        "mode": "absolute",
+                        "steps": [
+                          {
+                            "color": "green",
+                            "value": null
+                          },
+                          {
+                            "color": "red",
+                            "value": 0
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "cellHeight": "sm",
+              "showHeader": true
+            }
+          },
+          "version": "13.1.0"
+        }
+      }
+    }
+  },
+  "layout": {
+    "kind": "GridLayout",
+    "spec": {
+      "items": [
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-1"
+            },
+            "height": 6,
+            "width": 12,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-2"
+            },
+            "height": 6,
+            "width": 12,
+            "x": 0,
+            "y": 6
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
+              "name": "panel-3"
+            },
+            "height": 8,
+            "width": 12,
+            "x": 0,
+            "y": 12
+          }
+        }
+      ]
+    }
+  },
+  "links": [],
+  "liveNow": false,
+  "preload": false,
+  "tags": [
+    "fund",
+    "finance"
+  ],
+  "timeSettings": {
+    "autoRefresh": "5m",
+    "autoRefreshIntervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "fiscalYearStartMonth": 0,
+    "from": "now-6h",
+    "hideTimepicker": false,
+    "timezone": "browser",
+    "to": "now"
+  },
+  "title": "FundExporter",
+  "variables": []
 }
