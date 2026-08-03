@@ -89,6 +89,42 @@ def _sync_gist():
 
 
 # ── 對照表管理 ──────────────────────────────────────────────────
+def _remove_fund_labels(name: str):
+    for gauge in (fund_cost, fund_units, fund_nav, fund_value, fund_cost_value_ratio):
+        try:
+            gauge.remove(name)
+        except KeyError:
+            pass
+    for field in ("cost", "units", "nav", "value", "ratio"):
+        try:
+            fund_detail.remove(name, field)
+        except KeyError:
+            pass
+
+
+def _merge_duplicate_funds(main_name: str, code: str) -> bool:
+    with mapping_lock:
+        dups = [name for name, c in mapping.items() if c == code and name != main_name]
+    if not dups:
+        return False
+
+    with records_lock:
+        main = records.get(main_name)
+        for old_name in dups:
+            old = records.pop(old_name, None)
+            if main is not None and old is not None:
+                main["cost"] += old["cost"]
+                main["units"] += old["units"]
+            _remove_fund_labels(old_name)
+
+    with mapping_lock:
+        for old_name in dups:
+            mapping.pop(old_name, None)
+
+    logger.info("合併同代碼持倉 %s → %s (%s)", ", ".join(dups), main_name, code)
+    return True
+
+
 def ensure_fund_code(fund_name: str) -> str | None:
     with mapping_lock:
         code = mapping.get(fund_name)
@@ -100,6 +136,7 @@ def ensure_fund_code(fund_name: str) -> str | None:
     if code:
         with mapping_lock:
             mapping[fund_name] = code
+        _merge_duplicate_funds(fund_name, code)
         _sync_gist()
         logger.info("已找到代碼 %s → %s", fund_name, code)
         return code
@@ -354,6 +391,7 @@ class Handler(BaseHTTPRequestHandler):
                 records.pop(fund_name, None)
             with mapping_lock:
                 mapping.pop(fund_name, None)
+            _remove_fund_labels(fund_name)
             _sync_gist()
             self._send(200, json.dumps({"ok": True}).encode(), "application/json")
         else:
