@@ -110,9 +110,15 @@ def _merge_duplicate_funds(main_name: str, code: str) -> bool:
 
     with records_lock:
         main = records.get(main_name)
+        if main is None:
+            logger.warning("合併目標 %s 不在持倉中，保留原持倉，略過合併 (%s)", main_name, code)
+            return False
         for old_name in dups:
             old = records.pop(old_name, None)
-            if main is not None and old is not None:
+            if old is not None:
+                if main["nav"] == 0 and old["nav"] != 0:
+                    main["nav"] = old["nav"]
+                    main["nav_date"] = old["nav_date"]
                 main["cost"] += old["cost"]
                 main["units"] += old["units"]
             _remove_fund_labels(old_name)
@@ -260,22 +266,31 @@ def update_navs():
 
 # ── Metrics 更新 ────────────────────────────────────────────────
 def refresh_metrics():
+    _ALL_GAUGES = (fund_cost, fund_units, fund_nav, fund_value, fund_cost_value_ratio, fund_detail)
     with records_lock:
         snapshot = {k: dict(v) for k, v in records.items()}
-    for name, data in snapshot.items():
-        fund_cost.labels(fund_name=name).set(data["cost"])
-        fund_units.labels(fund_name=name).set(float(data["units"]))
-        nav_val = data["nav"]
-        fund_nav.labels(fund_name=name).set(float(nav_val))
-        market_value = float(data["units"] * nav_val)
-        fund_value.labels(fund_name=name).set(market_value)
-        ratio = market_value / data["cost"] if data["cost"] > 0 else 0.0
-        fund_cost_value_ratio.labels(fund_name=name).set(ratio)
-        fund_detail.labels(fund_name=name, field="cost").set(data["cost"])
-        fund_detail.labels(fund_name=name, field="units").set(float(data["units"]))
-        fund_detail.labels(fund_name=name, field="nav").set(float(nav_val))
-        fund_detail.labels(fund_name=name, field="value").set(market_value)
-        fund_detail.labels(fund_name=name, field="ratio").set(ratio)
+        active = set(snapshot)
+        for gauge in _ALL_GAUGES:
+            for key in list(gauge._metrics):
+                if key[0] not in active:
+                    try:
+                        gauge.remove(*key)
+                    except KeyError:
+                        pass
+        for name, data in snapshot.items():
+            fund_cost.labels(fund_name=name).set(data["cost"])
+            fund_units.labels(fund_name=name).set(float(data["units"]))
+            nav_val = data["nav"]
+            fund_nav.labels(fund_name=name).set(float(nav_val))
+            market_value = float(data["units"] * nav_val)
+            fund_value.labels(fund_name=name).set(market_value)
+            ratio = market_value / data["cost"] if data["cost"] > 0 else 0.0
+            fund_cost_value_ratio.labels(fund_name=name).set(ratio)
+            fund_detail.labels(fund_name=name, field="cost").set(data["cost"])
+            fund_detail.labels(fund_name=name, field="units").set(float(data["units"]))
+            fund_detail.labels(fund_name=name, field="nav").set(float(nav_val))
+            fund_detail.labels(fund_name=name, field="value").set(market_value)
+            fund_detail.labels(fund_name=name, field="ratio").set(ratio)
 
 
 # ── API 回傳資料組裝 ────────────────────────────────────────────
@@ -389,9 +404,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
             with records_lock:
                 records.pop(fund_name, None)
+                _remove_fund_labels(fund_name)
             with mapping_lock:
                 mapping.pop(fund_name, None)
-            _remove_fund_labels(fund_name)
             _sync_gist()
             self._send(200, json.dumps({"ok": True}).encode(), "application/json")
         else:
