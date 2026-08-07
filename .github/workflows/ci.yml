@@ -24,6 +24,8 @@ jobs:
         run: uv sync --frozen
       - name: Check syntax
         run: uv run python -m py_compile fund_parser.py gmail_filter.py gist_store.py nav_fetcher.py fund_exporter.py
+      - name: Run tests
+        run: uv run pytest
 
   docker:
     needs: check
