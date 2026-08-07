@@ -9,3 +9,11 @@ dependencies = [
     "lxml>=6.1.1",
     "prometheus-client>=0.25.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
