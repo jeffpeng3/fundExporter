@@ -5,18 +5,18 @@ import logging
 import os
 import threading
 from collections.abc import Callable
-from datetime import date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs, unquote
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import parse_qs, unquote, urlparse
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from prometheus_client import Gauge, generate_latest, REGISTRY
+from prometheus_client import REGISTRY, Gauge, generate_latest
 
 import fund_parser
 import gist_store
 import nav_fetcher
-from gmail_filter import load_env, get_text, quote_folder
+from gmail_filter import get_text, load_env, quote_folder
 
 logger = logging.getLogger("fund_exporter")
 
@@ -66,7 +66,7 @@ def init_from_gist():
             records[name] = {
                 "cost": int(data.get("cost", 0)),
                 "units": Decimal(str(data.get("units", 0))),
-                "nav": Decimal("0"),
+                "nav": Decimal(0),
                 "nav_date": "",
             }
     with mapping_lock:
@@ -97,7 +97,7 @@ def _mark_action(name: str, ok: bool, detail: str = ""):
     with actions_lock:
         actions[name] = {
             "running": False,
-            "last_ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "last_ts": datetime.now(UTC).astimezone().strftime("%Y-%m-%d %H:%M:%S"),
             "last_ok": ok,
             "last_detail": detail,
         }
@@ -209,7 +209,7 @@ def fetch_new_emails():
             conn.logout()
             return
 
-        today = date.today().strftime("%d-%b-%Y")
+        today = datetime.now(UTC).astimezone().date().strftime("%d-%b-%Y")
         search_criteria = f'SINCE {today}'
         r = conn.uid("SEARCH", search_criteria.encode("utf-8"))
         if r[0] != "OK" or not r[1][0]:
@@ -256,7 +256,7 @@ def fetch_new_emails():
             for rec in new_records:
                 name = rec["fund_name"]
                 if name not in records:
-                    records[name] = {"cost": 0, "units": Decimal("0"), "nav": Decimal("0"), "nav_date": ""}
+                    records[name] = {"cost": 0, "units": Decimal(0), "nav": Decimal(0), "nav_date": ""}
                     new_names.append(name)
                 records[name]["cost"] += rec["amount"]
                 records[name]["units"] += Decimal(str(rec["units"]))
@@ -426,10 +426,10 @@ class Handler(BaseHTTPRequestHandler):
                 if original_name and original_name != fund_name:
                     old_data = records.pop(original_name, None)
                     old_cost = old_data["cost"] if old_data else 0
-                    old_units = old_data["units"] if old_data else Decimal("0")
-                    records[fund_name] = {"cost": old_cost, "units": old_units, "nav": Decimal("0"), "nav_date": ""}
+                    old_units = old_data["units"] if old_data else Decimal(0)
+                    records[fund_name] = {"cost": old_cost, "units": old_units, "nav": Decimal(0), "nav_date": ""}
                 if fund_name not in records:
-                    records[fund_name] = {"cost": 0, "units": Decimal("0"), "nav": Decimal("0"), "nav_date": ""}
+                    records[fund_name] = {"cost": 0, "units": Decimal(0), "nav": Decimal(0), "nav_date": ""}
                 records[fund_name]["cost"] = cost
                 records[fund_name]["units"] = units
 
@@ -510,7 +510,7 @@ def main():
         hour=FETCH_CRON_HOUR,
         minute=FETCH_CRON_MINUTE,
         id="fetch_emails",
-        next_run_time=datetime.now() + timedelta(seconds=10),
+        next_run_time=datetime.now(UTC).astimezone() + timedelta(seconds=10),
     )
     scheduler.add_job(
         lambda: _run_action("refresh_navs", update_navs),

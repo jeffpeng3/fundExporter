@@ -13,6 +13,10 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 
+[tool.ruff.lint]
+# 外部服務（gist/IMAP/http）的防護邏輯刻意 catch-all，log 後繼續
+ignore = ["BLE001"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
