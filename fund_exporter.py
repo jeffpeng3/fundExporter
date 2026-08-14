@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import threading
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -36,6 +37,9 @@ mapping_lock = threading.Lock()
 
 processed_uids: set[str] = set()
 processed_uids_lock = threading.Lock()
+
+actions: dict[str, dict] = {}
+actions_lock = threading.Lock()
 
 # ── 設定 ────────────────────────────────────────────────────────
 GMAIL_FOLDER = os.environ.get("GMAIL_FOLDER", "money/bank/line bank/fund")
@@ -86,6 +90,41 @@ def _sync_gist():
         gist_store.save_all(holdings, mp, uids)
     except Exception as e:
         logger.error("同步至 Gist 失敗: %s", e)
+
+
+# ── 手動動作控制 ────────────────────────────────────────────────
+def _mark_action(name: str, ok: bool, detail: str = ""):
+    with actions_lock:
+        actions[name] = {
+            "running": False,
+            "last_ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "last_ok": ok,
+            "last_detail": detail,
+        }
+
+
+def _run_action(name: str, fn: Callable[[], None]):
+    with actions_lock:
+        if actions.get(name, {}).get("running"):
+            logger.info("動作 %s 已在執行中，略過", name)
+            return False
+        actions[name] = {
+            "running": True,
+            "last_ts": actions.get(name, {}).get("last_ts"),
+            "last_ok": actions.get(name, {}).get("last_ok"),
+            "last_detail": actions.get(name, {}).get("last_detail"),
+        }
+
+    def worker():
+        try:
+            fn()
+            _mark_action(name, True)
+        except Exception as e:
+            logger.error("動作 %s 執行失敗: %s", name, e)
+            _mark_action(name, False, str(e))
+
+    threading.Thread(target=worker, daemon=True).start()
+    return True
 
 
 # ── 對照表管理 ──────────────────────────────────────────────────
@@ -344,6 +383,20 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/holdings":
             self._send(200, json.dumps({"holdings": _holdings_list()}, ensure_ascii=False).encode(), "application/json")
 
+        elif path == "/api/status":
+            with actions_lock:
+                act = {k: dict(v) for k, v in actions.items()}
+            with records_lock:
+                holdings_count = len(records)
+            with processed_uids_lock:
+                uid_count = len(processed_uids)
+            payload = {
+                "actions": act,
+                "holdings_count": holdings_count,
+                "processed_uids": uid_count,
+            }
+            self._send(200, json.dumps(payload, ensure_ascii=False).encode(), "application/json")
+
         elif path == "/api/search":
             q = qs.get("q", [None])[0]
             if not q or len(q.strip()) < 1:
@@ -391,6 +444,18 @@ class Handler(BaseHTTPRequestHandler):
 
             _sync_gist()
             self._send(200, json.dumps({"ok": True}).encode(), "application/json")
+        elif self.path == "/api/refresh":
+            started = _run_action("refresh_navs", update_navs)
+            self._send(200, json.dumps({"ok": True, "action": "refresh_navs", "started": started}).encode(), "application/json")
+        elif self.path == "/api/fetch-emails":
+            started = _run_action("fetch_emails", fetch_new_emails)
+            self._send(200, json.dumps({"ok": True, "action": "fetch_emails", "started": started}).encode(), "application/json")
+        elif self.path == "/api/sync-gist":
+            started = _run_action("sync_gist", _sync_gist)
+            self._send(200, json.dumps({"ok": True, "action": "sync_gist", "started": started}).encode(), "application/json")
+        elif self.path == "/api/reload-gist":
+            started = _run_action("reload_gist", init_from_gist)
+            self._send(200, json.dumps({"ok": True, "action": "reload_gist", "started": started}).encode(), "application/json")
         else:
             self._send(404, b"Not Found")
 
@@ -432,11 +497,15 @@ def main():
 
     if records:
         logger.info("啟動時立即更新淨值…")
-        update_navs()
+        try:
+            update_navs()
+            _mark_action("refresh_navs", True, "啟動時自動執行")
+        except Exception as e:
+            _mark_action("refresh_navs", False, str(e))
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        fetch_new_emails,
+        lambda: _run_action("fetch_emails", fetch_new_emails),
         "cron",
         hour=FETCH_CRON_HOUR,
         minute=FETCH_CRON_MINUTE,
@@ -444,7 +513,7 @@ def main():
         next_run_time=datetime.now() + timedelta(seconds=10),
     )
     scheduler.add_job(
-        update_navs,
+        lambda: _run_action("refresh_navs", update_navs),
         "cron",
         hour=NAV_CRON_HOUR,
         minute=NAV_CRON_MINUTE,

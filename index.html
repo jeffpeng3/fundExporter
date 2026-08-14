@@ -47,6 +47,15 @@ tr:hover td { background: #1a2332; }
 .suggest-list div { padding: 8px 12px; cursor: pointer; font-size: 13px; }
 .suggest-list div:hover { background: #334155; }
 .suggest-list .code-tag { float: right; color: #64748b; font-size: 11px; }
+/* Controls */
+.control-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #1e293b; }
+.control-item:last-of-type { border-bottom: none; }
+.control-item .btn { min-width: 132px; }
+.control-status { font-size: 13px; color: #94a3b8; }
+.control-status.ok { color: #22c55e; }
+.control-status.fail { color: #ef4444; }
+.control-status.running { color: #f59e0b; }
+.uid-info { margin-top: 10px; font-size: 12px; color: #475569; }
 </style>
 </head>
 <body>
@@ -78,6 +87,27 @@ tr:hover td { background: #1a2332; }
     </tfoot>
   </table>
   <div class="empty" id="emptyState">尚無庫存資料，請點擊「新增庫存」或設定 Gist</div>
+</div>
+
+<div class="card">
+  <h2 style="font-size:16px;margin-bottom:12px;">控制</h2>
+  <div class="control-item">
+    <button class="btn btn-primary btn-sm" id="btn-refresh_navs" onclick="runAction('refresh_navs')">重新整理淨值</button>
+    <span class="control-status" id="status-refresh_navs">尚未執行</span>
+  </div>
+  <div class="control-item">
+    <button class="btn btn-ghost btn-sm" id="btn-fetch_emails" onclick="runAction('fetch_emails')">抓取郵件</button>
+    <span class="control-status" id="status-fetch_emails">尚未執行</span>
+  </div>
+  <div class="control-item">
+    <button class="btn btn-ghost btn-sm" id="btn-sync_gist" onclick="runAction('sync_gist')">同步 Gist</button>
+    <span class="control-status" id="status-sync_gist">尚未執行</span>
+  </div>
+  <div class="control-item">
+    <button class="btn btn-ghost btn-sm" id="btn-reload_gist" onclick="runAction('reload_gist', true)">從 Gist 重載</button>
+    <span class="control-status" id="status-reload_gist">尚未執行</span>
+  </div>
+  <p class="uid-info">已處理郵件 UID: <span id="uidCount">0</span> 筆</p>
 </div>
 
 <div class="modal-overlay" id="modalOverlay">
@@ -172,6 +202,68 @@ async function fetchHoldings() {
     document.getElementById('statusBadge').textContent = '連線錯誤';
     console.error('fetchHoldings error:', err);
   }
+}
+
+const ACTION_LABELS = {
+  refresh_navs: '重新整理淨值',
+  fetch_emails: '抓取郵件',
+  sync_gist: '同步 Gist',
+  reload_gist: '從 Gist 重載',
+};
+const ACTION_PATHS = {
+  refresh_navs: '/api/refresh',
+  fetch_emails: '/api/fetch-emails',
+  sync_gist: '/api/sync-gist',
+  reload_gist: '/api/reload-gist',
+};
+
+async function fetchStatus() {
+  try {
+    const resp = await fetch('/api/status');
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+    document.getElementById('uidCount').textContent = data.processed_uids;
+
+    for (const [name, s] of Object.entries(data.actions)) {
+      const el = document.getElementById('status-' + name);
+      if (!el) continue;
+      let cls = '', text;
+      if (s.running) {
+        cls = 'running';
+        text = '執行中…';
+      } else if (s.last_ts === null || s.last_ts === undefined) {
+        text = '尚未執行';
+      } else if (s.last_ok) {
+        cls = 'ok';
+        text = `上次 ${s.last_ts} 成功`;
+      } else {
+        cls = 'fail';
+        text = `上次 ${s.last_ts} 失敗${s.last_detail ? ' (' + s.last_detail + ')' : ''}`;
+      }
+      el.className = 'control-status ' + cls;
+      el.textContent = text;
+    }
+  } catch (err) {
+    console.error('fetchStatus error:', err);
+  }
+}
+
+async function runAction(name, needsConfirm) {
+  const label = ACTION_LABELS[name];
+  if (needsConfirm && !confirm(`確定要從 Gist 重載資料嗎？本機未同步的修改會被覆蓋。`)) return;
+
+  const btn = document.getElementById('btn-' + name);
+  btn.disabled = true;
+  btn.textContent = '執行中…';
+  try {
+    const resp = await fetch(ACTION_PATHS[name], { method: 'POST' });
+    if (!resp.ok) throw new Error(resp.statusText);
+    await Promise.all([fetchStatus(), fetchHoldings()]);
+  } catch (err) {
+    alert(label + '失敗: ' + err.message);
+  }
+  btn.disabled = false;
+  btn.textContent = label;
 }
 
 async function saveHolding() {
@@ -289,7 +381,9 @@ nameInput.addEventListener('keydown', (e) => {
 // ─────────────────────────────────────────────────────────
 
 fetchHoldings();
+fetchStatus();
 setInterval(fetchHoldings, 30000);
+setInterval(fetchStatus, 30000);
 
 document.getElementById('modalOverlay').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeModal();
