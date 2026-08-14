@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from fund_parser import parse_email_body
 
 FIXTURES = Path(__file__).parent / "fixtures"
