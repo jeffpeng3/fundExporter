@@ -226,7 +226,7 @@ def fetch_new_emails():
 
         new_records: list[dict] = []
         newly_processed: list[str] = []
-        for uid in reversed(all_uids[-5:]):
+        for uid in reversed(all_uids[-20:]):
             r = conn.uid("FETCH", uid, "(BODY[])")
             if r[0] != "OK":
                 continue
