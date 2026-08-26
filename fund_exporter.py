@@ -43,8 +43,6 @@ actions_lock = threading.Lock()
 
 # ── 設定 ────────────────────────────────────────────────────────
 GMAIL_FOLDER = os.environ.get("GMAIL_FOLDER", "money/bank/line bank/fund")
-NAV_CRON_HOUR = int(os.environ.get("NAV_CRON_HOUR", "22"))
-NAV_CRON_MINUTE = int(os.environ.get("NAV_CRON_MINUTE", "0"))
 FETCH_CRON_HOUR = int(os.environ.get("FETCH_CRON_HOUR", "20"))
 FETCH_CRON_MINUTE = int(os.environ.get("FETCH_CRON_MINUTE", "0"))
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8000"))
@@ -247,33 +245,16 @@ def fetch_new_emails():
             with processed_uids_lock:
                 processed_uids.update(newly_processed)
 
-        if not new_records:
-            return
-
-        changed = False
-        new_names = []
         with records_lock:
             for rec in new_records:
                 name = rec["fund_name"]
                 if name not in records:
                     records[name] = {"cost": 0, "units": Decimal(0), "nav": Decimal(0), "nav_date": ""}
-                    new_names.append(name)
                 records[name]["cost"] += rec["amount"]
                 records[name]["units"] += Decimal(str(rec["units"]))
-                changed = True
 
-        for name in new_names:
-            code = ensure_fund_code(name)
-            if code:
-                nav_data = nav_fetcher.fetch_nav(code)
-                if nav_data:
-                    with records_lock:
-                        if name in records:
-                            records[name]["nav"] = Decimal(str(nav_data[1]))
-                            records[name]["nav_date"] = nav_data[0]
-
-        if changed:
-            _sync_gist()
+        _sync_gist()
+        update_navs()
         logger.info("已處理 %d 筆新申購紀錄", len(new_records))
 
     except Exception as e:
@@ -512,15 +493,8 @@ def main():
         id="fetch_emails",
         next_run_time=datetime.now(UTC).astimezone() + timedelta(seconds=10),
     )
-    scheduler.add_job(
-        lambda: _run_action("refresh_navs", update_navs),
-        "cron",
-        hour=NAV_CRON_HOUR,
-        minute=NAV_CRON_MINUTE,
-        id="update_navs",
-    )
     scheduler.start()
-    logger.info("排程已啟動（郵件每天 %02d:%02d → 淨值每天 %02d:%02d）", FETCH_CRON_HOUR, FETCH_CRON_MINUTE, NAV_CRON_HOUR, NAV_CRON_MINUTE)
+    logger.info("排程已啟動（郵件每天 %02d:%02d）", FETCH_CRON_HOUR, FETCH_CRON_MINUTE)
 
     server = HTTPServer(("0.0.0.0", EXPORTER_PORT), Handler)
     logger.info("HTTP server listening on port %d", EXPORTER_PORT)
