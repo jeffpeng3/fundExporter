@@ -35,11 +35,16 @@
                 "spec": {
                   "hidden": false,
                   "query": {
-                    "group": "",
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
+                      "editorMode": "code",
                       "expr": "last_over_time(sum(fund_value)[30m:])",
-                      "legendFormat": "總市值"
+                      "legendFormat": "總市值",
+                      "range": true
                     },
                     "version": "v0"
                   },
@@ -51,11 +56,16 @@
                 "spec": {
                   "hidden": false,
                   "query": {
-                    "group": "",
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
+                      "editorMode": "code",
                       "expr": "last_over_time(sum(fund_cost)[30m:])",
-                      "legendFormat": "總成本"
+                      "legendFormat": "總成本",
+                      "range": true
                     },
                     "version": "v0"
                   },
@@ -169,7 +179,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "last_over_time(fund_value{instance=\"fund:8000\"}[30m:])",
+                      "expr": "last_over_time(fund_value[30m:])",
                       "legendFormat": "{{fund_name}}",
                       "range": true
                     },
@@ -190,7 +200,7 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "builder",
-                      "expr": "sum(last_over_time(fund_value{instance=\"fund:8000\"}[30m:]))",
+                      "expr": "sum(last_over_time(fund_value[30m:]))",
                       "legendFormat": "Total",
                       "range": true
                     },
@@ -299,7 +309,10 @@
                 "spec": {
                   "hidden": false,
                   "query": {
-                    "group": "",
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
                       "expr": "sum by (fund_name) (fund_cost)",
@@ -317,7 +330,10 @@
                 "spec": {
                   "hidden": false,
                   "query": {
-                    "group": "",
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
                       "expr": "sum by (fund_name) (fund_units)",
@@ -335,7 +351,10 @@
                 "spec": {
                   "hidden": false,
                   "query": {
-                    "group": "",
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
                       "expr": "sum by (fund_name) (fund_nav)",
@@ -353,7 +372,10 @@
                 "spec": {
                   "hidden": false,
                   "query": {
-                    "group": "",
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
                       "expr": "sum by (fund_name) (fund_value)",
@@ -371,7 +393,10 @@
                 "spec": {
                   "hidden": false,
                   "query": {
-                    "group": "",
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
                     "kind": "DataQuery",
                     "spec": {
                       "expr": "sum by (fund_name) (fund_cost_value_ratio)",
@@ -571,13 +596,35 @@
                     "kind": "DataQuery",
                     "spec": {
                       "editorMode": "code",
-                      "expr": "last_over_time(fund_cost_value_ratio{instance=\"fund:8000\"}[30m:])",
+                      "expr": "last_over_time(fund_cost_value_ratio[30m:])",
                       "legendFormat": "{{fund_name}}",
                       "range": true
                     },
                     "version": "v0"
                   },
                   "refId": "A"
+                }
+              },
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "expr": "last_over_time(sum(fund_value)[30m:])/last_over_time(sum(fund_cost)[30m:])",
+                      "instant": false,
+                      "legendFormat": "total",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "B"
                 }
               }
             ],
@@ -632,6 +679,7 @@
                     "mode": "off"
                   }
                 },
+                "decimals": 4,
                 "thresholds": {
                   "mode": "absolute",
                   "steps": [
@@ -641,6 +689,148 @@
                     }
                   ]
                 }
+              },
+              "overrides": [
+                {
+                  "__systemRef": "hideSeriesFrom",
+                  "matcher": {
+                    "id": "byNames",
+                    "options": {
+                      "mode": "exclude",
+                      "names": [
+                        "total"
+                      ],
+                      "prefix": "All except:",
+                      "readOnly": true
+                    }
+                  },
+                  "properties": [
+                    {
+                      "id": "custom.hideFrom",
+                      "value": {
+                        "legend": false,
+                        "tooltip": true,
+                        "viz": true
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "options": {
+              "annotations": {
+                "clustering": -1,
+                "multiLane": false
+              },
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "enableFacetedFilter": false,
+                "overflow": "ellipsis",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "hideZeros": false,
+                "mode": "multi",
+                "sort": "none"
+              }
+            }
+          },
+          "version": "13.1.0"
+        }
+      }
+    },
+    "panel-5": {
+      "kind": "Panel",
+      "spec": {
+        "data": {
+          "kind": "QueryGroup",
+          "spec": {
+            "queries": [
+              {
+                "kind": "PanelQuery",
+                "spec": {
+                  "hidden": false,
+                  "query": {
+                    "datasource": {
+                      "name": "PBFA97CFB590B2093"
+                    },
+                    "group": "prometheus",
+                    "kind": "DataQuery",
+                    "spec": {
+                      "editorMode": "code",
+                      "expr": "last_over_time(fund_cost_value_ratio[30m:]) / (last_over_time(fund_cost_value_ratio[30m:]) offset 1d) - 1",
+                      "legendFormat": "{{fund_name}}",
+                      "range": true
+                    },
+                    "version": "v0"
+                  },
+                  "refId": "A"
+                }
+              }
+            ],
+            "queryOptions": {},
+            "transformations": []
+          }
+        },
+        "description": "",
+        "id": 5,
+        "links": [],
+        "title": "ROI per day",
+        "vizConfig": {
+          "group": "timeseries",
+          "kind": "VizConfig",
+          "spec": {
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "barWidthFactor": 0.6,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "showValues": false,
+                  "spanNulls": -1,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    }
+                  ]
+                },
+                "unit": "percentunit"
               },
               "overrides": []
             },
@@ -717,12 +907,25 @@
           "spec": {
             "element": {
               "kind": "ElementReference",
+              "name": "panel-5"
+            },
+            "height": 6,
+            "width": 24,
+            "x": 0,
+            "y": 18
+          }
+        },
+        {
+          "kind": "GridLayoutItem",
+          "spec": {
+            "element": {
+              "kind": "ElementReference",
               "name": "panel-3"
             },
             "height": 8,
             "width": 24,
             "x": 0,
-            "y": 18
+            "y": 24
           }
         }
       ]
@@ -750,7 +953,7 @@
       "1d"
     ],
     "fiscalYearStartMonth": 0,
-    "from": "now-30m",
+    "from": "now-6h",
     "hideTimepicker": false,
     "timezone": "browser",
     "to": "now"

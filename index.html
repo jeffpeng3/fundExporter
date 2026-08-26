@@ -221,30 +221,46 @@ async function fetchStatus() {
   try {
     const resp = await fetch('/api/status');
     if (!resp.ok) throw new Error(resp.statusText);
-    const data = await resp.json();
-    document.getElementById('uidCount').textContent = data.processed_uids;
-
-    for (const [name, s] of Object.entries(data.actions)) {
-      const el = document.getElementById('status-' + name);
-      if (!el) continue;
-      let cls = '', text;
-      if (s.running) {
-        cls = 'running';
-        text = '執行中…';
-      } else if (s.last_ts === null || s.last_ts === undefined) {
-        text = '尚未執行';
-      } else if (s.last_ok) {
-        cls = 'ok';
-        text = `上次 ${s.last_ts} 成功`;
-      } else {
-        cls = 'fail';
-        text = `上次 ${s.last_ts} 失敗${s.last_detail ? ' (' + s.last_detail + ')' : ''}`;
-      }
-      el.className = 'control-status ' + cls;
-      el.textContent = text;
-    }
+    renderStatus(await resp.json());
   } catch (err) {
     console.error('fetchStatus error:', err);
+  }
+}
+
+function renderStatus(data) {
+  document.getElementById('uidCount').textContent = data.processed_uids;
+
+  for (const [name, s] of Object.entries(data.actions)) {
+    const el = document.getElementById('status-' + name);
+    if (!el) continue;
+    let cls = '', text;
+    if (s.running) {
+      cls = 'running';
+      text = '執行中…';
+    } else if (s.last_ts === null || s.last_ts === undefined) {
+      text = '尚未執行';
+    } else if (s.last_ok) {
+      cls = 'ok';
+      text = `上次 ${s.last_ts} 成功`;
+    } else {
+      cls = 'fail';
+      text = `上次 ${s.last_ts} 失敗${s.last_detail ? ' (' + s.last_detail + ')' : ''}`;
+    }
+    el.className = 'control-status ' + cls;
+    el.textContent = text;
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function waitActionDone(name) {
+  for (;;) {
+    const resp = await fetch('/api/status');
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+    renderStatus(data);
+    if (!data.actions[name] || !data.actions[name].running) return;
+    await sleep(2000);
   }
 }
 
@@ -258,6 +274,7 @@ async function runAction(name, needsConfirm) {
   try {
     const resp = await fetch(ACTION_PATHS[name], { method: 'POST' });
     if (!resp.ok) throw new Error(resp.statusText);
+    await waitActionDone(name);
     await Promise.all([fetchStatus(), fetchHoldings()]);
   } catch (err) {
     alert(label + '失敗: ' + err.message);
