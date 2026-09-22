@@ -102,6 +102,29 @@ def test_post_refresh_triggers_update_navs():
     assert mock_run.call_args.args[1] is fe.update_navs
 
 
+def test_daily_job_refreshes_navs_and_marks_success():
+    fe.actions.clear()
+    with patch.object(fe, "_run_action", return_value=True) as mock_run, \
+         patch.object(fe, "update_navs") as mock_nav:
+        fe.daily_job()
+    mock_nav.assert_called_once()
+    mock_run.assert_called_once_with("fetch_emails", fe.fetch_new_emails)
+    with fe.actions_lock:
+        assert fe.actions["refresh_navs"]["last_ok"] is True
+        assert fe.actions["refresh_navs"]["last_detail"] == "每日排程"
+
+
+def test_daily_job_records_nav_failure():
+    fe.actions.clear()
+    with patch.object(fe, "_run_action", return_value=True) as mock_run, \
+         patch.object(fe, "update_navs", side_effect=RuntimeError("boom")):
+        fe.daily_job()
+    mock_run.assert_called_once_with("fetch_emails", fe.fetch_new_emails)
+    with fe.actions_lock:
+        assert fe.actions["refresh_navs"]["last_ok"] is False
+        assert fe.actions["refresh_navs"]["last_detail"] == "boom"
+
+
 def test_post_fetch_emails_triggers_fetch():
     with patch.object(fe, "_run_action", return_value=True) as mock_run:
         handler = StubHandler("/api/fetch-emails")

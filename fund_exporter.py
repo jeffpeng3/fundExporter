@@ -284,6 +284,15 @@ def update_navs():
             logger.info("淨值更新 %s → %.4f (%s)", name, nav_data[1], nav_data[0])
 
 
+def daily_job():
+    _run_action("fetch_emails", fetch_new_emails)
+    try:
+        update_navs()
+        _mark_action("refresh_navs", True, "每日排程")
+    except Exception as e:
+        _mark_action("refresh_navs", False, str(e))
+
+
 # ── Metrics 更新 ────────────────────────────────────────────────
 def refresh_metrics():
     _ALL_GAUGES = (fund_cost, fund_units, fund_nav, fund_value, fund_cost_value_ratio, fund_detail)
@@ -486,7 +495,7 @@ def main():
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        lambda: _run_action("fetch_emails", fetch_new_emails),
+        daily_job,
         "cron",
         hour=FETCH_CRON_HOUR,
         minute=FETCH_CRON_MINUTE,
