@@ -45,6 +45,8 @@ actions_lock = threading.Lock()
 GMAIL_FOLDER = os.environ.get("GMAIL_FOLDER", "money/bank/line bank/fund")
 FETCH_CRON_HOUR = int(os.environ.get("FETCH_CRON_HOUR", "20"))
 FETCH_CRON_MINUTE = int(os.environ.get("FETCH_CRON_MINUTE", "0"))
+# 抓信回看天數。只抓「今天」會在停機或補寄時永久漏信
+FETCH_LOOKBACK_DAYS = int(os.environ.get("FETCH_LOOKBACK_DAYS", "30"))
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "8000"))
 INDEX_HTML = os.path.join(os.path.dirname(__file__), "index.html")
 
@@ -189,6 +191,44 @@ def ensure_fund_code(fund_name: str) -> str | None:
 
 
 # ── 郵件處理 ────────────────────────────────────────────────────
+def _apply_redeem(rec: dict):
+    """贖回只扣單位數，成本不動；單位歸零直接移除持倉。"""
+    name = rec["fund_name"]
+    redeem_units = Decimal(str(rec["units"]))
+    holding = records.get(name)
+    if holding is None:
+        logger.warning("贖回找不到持倉，略過: %s（%.4f 單位，%d 元）", name, float(redeem_units), rec["amount"])
+        return
+
+    holding["units"] -= redeem_units
+    if holding["units"] <= Decimal("0.001"):
+        records.pop(name, None)
+        _remove_fund_labels(name)
+        logger.info("贖回後單位歸零，移除持倉: %s（贖回 %d 元）", name, rec["amount"])
+    else:
+        logger.info(
+            "贖回 %s: -%.4f 單位，剩餘 %.4f 單位（贖回 %d 元）",
+            name,
+            float(redeem_units),
+            float(holding["units"]),
+            rec["amount"],
+        )
+
+
+def _apply_records(new_records: list[dict]):
+    with records_lock:
+        for rec in sorted(new_records, key=lambda r: r.get("date") or ""):
+            if rec.get("type") == fund_parser.REDEEM:
+                _apply_redeem(rec)
+                continue
+
+            name = rec["fund_name"]
+            if name not in records:
+                records[name] = {"cost": 0, "units": Decimal(0), "nav": Decimal(0), "nav_date": ""}
+            records[name]["cost"] += rec["amount"]
+            records[name]["units"] += Decimal(str(rec["units"]))
+
+
 def fetch_new_emails():
     email_account = os.environ.get("GMAIL_ACCOUNT")
     email_password = os.environ.get("GMAIL_APP_PASSWORD")
@@ -207,8 +247,8 @@ def fetch_new_emails():
             conn.logout()
             return
 
-        today = datetime.now(UTC).astimezone().date().strftime("%d-%b-%Y")
-        search_criteria = f'SINCE {today}'
+        since = (datetime.now(UTC).astimezone() - timedelta(days=FETCH_LOOKBACK_DAYS)).date().strftime("%d-%b-%Y")
+        search_criteria = f'SINCE {since}'
         r = conn.uid("SEARCH", search_criteria.encode("utf-8"))
         if r[0] != "OK" or not r[1][0]:
             conn.logout()
@@ -224,7 +264,7 @@ def fetch_new_emails():
 
         new_records: list[dict] = []
         newly_processed: list[str] = []
-        for uid in reversed(all_uids[-20:]):
+        for uid in reversed(all_uids):
             r = conn.uid("FETCH", uid, "(BODY[])")
             if r[0] != "OK":
                 continue
@@ -245,17 +285,11 @@ def fetch_new_emails():
             with processed_uids_lock:
                 processed_uids.update(newly_processed)
 
-        with records_lock:
-            for rec in new_records:
-                name = rec["fund_name"]
-                if name not in records:
-                    records[name] = {"cost": 0, "units": Decimal(0), "nav": Decimal(0), "nav_date": ""}
-                records[name]["cost"] += rec["amount"]
-                records[name]["units"] += Decimal(str(rec["units"]))
+        _apply_records(new_records)
 
         _sync_gist()
         update_navs()
-        logger.info("已處理 %d 筆新申購紀錄", len(new_records))
+        logger.info("已處理 %d 筆新交易紀錄", len(new_records))
 
     except Exception as e:
         logger.error("郵件擷取失敗: %s", e)
