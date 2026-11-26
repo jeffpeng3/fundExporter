@@ -19,5 +19,5 @@ ignore = ["BLE001"]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
 ]
