@@ -48,7 +48,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "last_over_time(sum(fund_value)[30m:])",
+                        "expr": "last_over_time(sum(fund_value)[5m:])",
                         "legendFormat": "總市值",
                         "range": true
                       },
@@ -69,7 +69,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "last_over_time(sum(fund_cost)[30m:])",
+                        "expr": "last_over_time(sum(fund_cost)[5m:])",
                         "legendFormat": "總成本",
                         "range": true
                       },
@@ -90,7 +90,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "last_over_time(sum(fund_value)[30m:])-last_over_time(sum(fund_cost)[30m:])",
+                        "expr": "last_over_time(sum(fund_value)[5m:])-last_over_time(sum(fund_cost)[5m:])",
                         "legendFormat": "損益",
                         "range": true
                       },
@@ -219,7 +219,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "last_over_time(fund_value[30m:])",
+                        "expr": "last_over_time(fund_value[5m:])",
                         "legendFormat": "{{fund_name}}",
                         "range": true
                       },
@@ -240,7 +240,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "builder",
-                        "expr": "sum(last_over_time(fund_value[30m:]))",
+                        "expr": "sum(last_over_time(fund_value[5m:]))",
                         "legendFormat": "Total",
                         "range": true
                       },
@@ -356,7 +356,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "last_over_time(fund_cost_value_ratio[30m:])",
+                        "expr": "last_over_time(fund_cost_value_ratio[5m:])",
                         "legendFormat": "{{fund_name}}",
                         "range": true
                       },
@@ -377,7 +377,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "last_over_time(sum(fund_value)[30m:])/last_over_time(sum(fund_cost)[30m:])",
+                        "expr": "last_over_time(sum(fund_value)[5m:])/last_over_time(sum(fund_cost)[5m:])",
                         "instant": false,
                         "legendFormat": "total",
                         "range": true
@@ -520,7 +520,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "last_over_time(fund_cost_value_ratio[30m:]) / (last_over_time(fund_cost_value_ratio[30m:]) offset 1d) - 1",
+                        "expr": "last_over_time(fund_cost_value_ratio[5m:]) / (last_over_time(fund_cost_value_ratio[5m:]) offset 1d) - 1",
                         "legendFormat": "{{fund_name}}",
                         "range": true
                       },
